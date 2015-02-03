@@ -8,112 +8,49 @@
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-# NB. This specfile is a work in progress. It is currently used by the
-# continuous integration system driven by nix and hydra to create and test RPMs
-# on Fedora, CentOS and RHEL systems. It is not yet ready for deployment of LVM
-# on those systems.
+# This spec file has been adapted for Mer builds from default upstream
+# spec file and include files.
 
-# A macro to pull in an include file from an appropriate location.
-%define import() %include %(test -e %{S:%1} && echo %{S:%1} || echo %{_sourcedir}/%1)
+%global _default_pid_dir /run
+%global _default_dm_run_dir /run
+%global _default_run_dir /run/lvm
+%global _default_locking_dir /run/lock/lvm
+%global _udevbasedir %{_prefix}/lib/udev
+%global _udevdir %{_udevbasedir}/rules.d
 
-%import macros.inc
+%define enableif() \
+%global configure_flags %{?configure_flags} --%(if test %1 -gt 0; then echo enable-%2; else echo disable-%2; fi)
 
-##############################################################
-# Defaults (rawhide)... 
+# Default Mer settings.
+# NOTE: 1. Udev rule for operation completion is broken, fix if you enable udev
+# NOTE: 2. Systemd services have not been tested. In Mer we are not restarting
+#          systems on install phase so we should reconsider all those when this
+#          gets enabled.
 
 %global enable_profiling 0
 %global enable_udev 0
 %global enable_systemd 0
-%global enable_cmirror 0
-
-
-# TODO %global req_dm_persistent device-mapper-persistent-data >= 0.1.4
-%with cache internal
-%with thin internal
-%with thin_check %{_sbindir}/thin_check
-%with thin_repair %{_sbindir}/thin_repair
-%with thin_dump %{_sbindir}/thin_dump
-
-%global buildreq_udev systemd-devel
-%global req_udev udev >= 181-1
-
-%service lvmetad 0
-
-##############################################################
-
-%if %{fedora} == 16 || %{rhel} == 6
-%global enable_systemd 0
-
-%global buildreq_udev libudev-devel
-%global buildreq_cluster openaislib-devel >= 1.1.1-1, clusterlib-devel >= 3.0.6-1, corosynclib-devel >= 1.2.0-1
-
-%global req_udev udev >= 158-1
-%global req_cluster openais >= 1.1.1-1, cman >= 3.0.6-1, corosync >= 1.2.0-1
-
-%global _udevbasedir /lib/udev
-%global _udevdir %{_udevbasedir}/rules.d
-%endif
-
-%if %{fedora} == 16
-%with cache none
-%with thin none
-%with thin_check
-%with thin_repair
-%with thin_dump
-%endif
-
-##############################################################
-
-%if %{fedora} == 17
-%global buildreq_udev systemd-devel
-
-%global req_udev udev >= 181-1
-%global req_dm_persistent device-mapper-persistent-data >= 0.1.4
-%endif
-
-##############################################################
-# same as FC 16 above, only with older udev
-
-%if %{rhel} == 6
-%define req_udev udev >= 147-2
-%global req_dm_persistent device-mapper-persistent-data >= 0.1.4
-%endif
-
-##############################################################
-
-# Do not reset Release to 1 unless both lvm2 and device-mapper
-# versions are increased together.
+%global enable_lvmetad 0
 
 %define device_mapper_version 1.02.93
 
 Summary: Userland logical volume management tools
 Name: lvm2
 Version: 2.02.115
-Release: 4%{?dist}
+Release: 1
 License: GPLv2
 Group: System Environment/Base
 URL: http://sources.redhat.com/lvm2
 Source0: %{name}-%{version}.tar.bz2
-Source91: source.inc
-Source92: build.inc
-Source93: packages.inc
-Source94: macros.inc
 
 BuildRequires: ncurses-devel
 BuildRequires: readline-devel
-BuildRequires: module-init-tools
-BuildRequires: pkgconfig
-
-# Expands to nothing unless at least 2 arguments are given
-%define maybe() \
-%if %(test -n "%{?2}" && echo 1 || echo 0) \
-%* \
-%endif
-%define ifwith() \
-%if %(if echo %{with_flags} | grep -q %1; then echo 1; else echo 0; fi)
-
+BuildRequires: kmod
+%if %{enable_systemd}
 BuildRequires: systemd-devel
-%maybe BuildRequires: %{?buildreq_cluster}
+%endif
+Requires: %{name}-libs = %{version}-%{release}
+
 
 %description
 LVM2 includes all of the support for handling read/write operations on
@@ -128,7 +65,431 @@ or more physical volumes and creating one or more logical volumes
 %prep
 %setup -n %{name}-%{version}/%{name}
 
-%import build.inc
-%import packages.inc
+%enableif %{enable_udev} udev_sync
+%enableif %{enable_profiling} profiling
+%enableif %{enable_lvmetad} lvmetad
 
-%changelog
+%build
+%configure \
+  --with-default-dm-run-dir=%{_default_dm_run_dir} \
+  --with-default-run-dir=%{_default_run_dir} \
+  --with-default-pid-dir=%{_default_pid_dir} \
+  --with-default-locking-dir=%{_default_locking_dir} \
+  --with-usrlibdir=%{_libdir} \
+  --enable-lvm1_fallback \
+  --enable-fsadm \
+  --with-pool=internal \
+  --with-user= \
+  --with-group= \
+  --with-device-uid=0 \
+  --with-device-gid=6 \
+  --with-device-mode=0660 \
+  --with-cache=internal \
+  --with-thin=internal \
+  --with-thin_check=%{_sbindir}/thin_check \
+  --with-thin_check=%{_sbindir}/thin_check \
+  --with-thin_repair=%{_sbindir}/thin_repair \
+  --with-thin_dump=%{_sbindir}/thin_dump \
+  --enable-pkgconfig \
+  --enable-applib \
+  --enable-cmdlib \
+  --enable-dmeventd \
+%if %{enable_udev}
+  --with-udevdir=%{_udevdir} \
+%endif
+  %{configure_flags}
+
+make %{?_smp_mflags}
+%{?extra_build_commands}
+
+%install
+make install DESTDIR=$RPM_BUILD_ROOT
+make install_system_dirs DESTDIR=$RPM_BUILD_ROOT
+%if %{enable_systemd}
+make install_systemd_units DESTDIR=$RPM_BUILD_ROOT
+make install_tmpfiles_configuration DESTDIR=$RPM_BUILD_ROOT
+%endif
+
+%check
+%{?check_commands}
+
+### MAIN PACKAGE (lvm2)
+
+%post
+/sbin/ldconfig
+%if %{enable_systemd}
+/bin/systemctl daemon-reload > /dev/null 2>&1 || :
+/bin/systemctl enable lvm2-monitor.service > /dev/null 2>&1 || :
+%if %{enable_lvmetad}
+/bin/systemctl enable lvm2-lvmetad.socket > /dev/null 2>&1 || :
+%endif
+%endif
+
+%preun
+%if %{enable_systemd}
+if [ "$1" = 0 ]; then
+  /bin/systemctl --no-reload disable lvm2-monitor.service > /dev/null 2>&1 || :
+  /bin/systemctl stop lvm2-monitor.service > /dev/null 2>&1 || :
+  %if %{enable_lvmetad}
+  /bin/systemctl --no-reload disable lvm2-lvmetad.lvmetad > /dev/null 2>&1 || :
+  /bin/systemctl stop lvm2-lvmetad.lvmetad > /dev/null 2>&1 || :
+  %endif
+fi
+%endif
+
+%postun
+%if %{enable_systemd}
+/bin/systemctl daemon-reload > /dev/null 2>&1 || :
+
+if [ $1 -ge 1 ]; then
+  /bin/systemctl try-restart lvm2-monitor.service > /dev/null 2>&1 || :
+  %if %{enable_lvmetad}
+  /bin/systemctl try-restart lvm2-lvmetad.service > /dev/null 2>&1 || :
+  %endif
+fi
+%endif
+
+# files in the main package
+
+%files
+%defattr(-,root,root,-)
+%doc COPYING COPYING.LIB INSTALL README VERSION WHATS_NEW
+%doc doc/lvm_fault_handling.txt
+%{_sbindir}/fsadm
+%{_sbindir}/lvchange
+%{_sbindir}/lvconvert
+%{_sbindir}/lvcreate
+%{_sbindir}/lvdisplay
+%{_sbindir}/lvextend
+%{_sbindir}/lvm
+%{_sbindir}/lvmchange
+%{_sbindir}/lvmdiskscan
+%{_sbindir}/lvmdump
+%{_sbindir}/lvmsadc
+%{_sbindir}/lvmsar
+%{_sbindir}/lvreduce
+%{_sbindir}/lvremove
+%{_sbindir}/lvrename
+%{_sbindir}/lvresize
+%{_sbindir}/lvs
+%{_sbindir}/lvscan
+%{_sbindir}/pvchange
+%{_sbindir}/pvck
+%{_sbindir}/pvcreate
+%{_sbindir}/pvdisplay
+%{_sbindir}/pvmove
+%{_sbindir}/pvremove
+%{_sbindir}/pvresize
+%{_sbindir}/pvs
+%{_sbindir}/pvscan
+%{_sbindir}/vgcfgbackup
+%{_sbindir}/vgcfgrestore
+%{_sbindir}/vgchange
+%{_sbindir}/vgck
+%{_sbindir}/vgconvert
+%{_sbindir}/vgcreate
+%{_sbindir}/vgdisplay
+%{_sbindir}/vgexport
+%{_sbindir}/vgextend
+%{_sbindir}/vgimport
+%{_sbindir}/vgimportclone
+%{_sbindir}/vgmerge
+%{_sbindir}/vgmknodes
+%{_sbindir}/vgreduce
+%{_sbindir}/vgremove
+%{_sbindir}/vgrename
+%{_sbindir}/vgs
+%{_sbindir}/vgscan
+%{_sbindir}/vgsplit
+%{_sbindir}/lvmconf
+%{_sbindir}/blkdeactivate
+%if %{enable_lvmetad}
+ %{_sbindir}/lvmetad
+%endif
+%{_mandir}/man7/lvmcache.7.gz
+%{_mandir}/man7/lvmthin.7.gz
+%{_mandir}/man5/lvm.conf.5.gz
+%{_mandir}/man8/fsadm.8.gz
+%{_mandir}/man8/lvchange.8.gz
+%{_mandir}/man8/lvconvert.8.gz
+%{_mandir}/man8/lvcreate.8.gz
+%{_mandir}/man8/lvdisplay.8.gz
+%{_mandir}/man8/lvextend.8.gz
+%{_mandir}/man8/lvm.8.gz
+%{_mandir}/man8/lvmchange.8.gz
+%{_mandir}/man8/lvmconf.8.gz
+%{_mandir}/man8/lvmdiskscan.8.gz
+%{_mandir}/man8/lvmdump.8.gz
+%{_mandir}/man8/lvmsadc.8.gz
+%{_mandir}/man8/lvmsar.8.gz
+%{_mandir}/man8/lvreduce.8.gz
+%{_mandir}/man8/lvremove.8.gz
+%{_mandir}/man8/lvrename.8.gz
+%{_mandir}/man8/lvresize.8.gz
+%{_mandir}/man8/lvs.8.gz
+%{_mandir}/man8/lvscan.8.gz
+%{_mandir}/man8/pvchange.8.gz
+%{_mandir}/man8/pvck.8.gz
+%{_mandir}/man8/pvcreate.8.gz
+%{_mandir}/man8/pvdisplay.8.gz
+%{_mandir}/man8/pvmove.8.gz
+%{_mandir}/man8/pvremove.8.gz
+%{_mandir}/man8/pvresize.8.gz
+%{_mandir}/man8/pvs.8.gz
+%{_mandir}/man8/pvscan.8.gz
+%{_mandir}/man8/vgcfgbackup.8.gz
+%{_mandir}/man8/vgcfgrestore.8.gz
+%{_mandir}/man8/vgchange.8.gz
+%{_mandir}/man8/vgck.8.gz
+%{_mandir}/man8/vgconvert.8.gz
+%{_mandir}/man8/vgcreate.8.gz
+%{_mandir}/man8/vgdisplay.8.gz
+%{_mandir}/man8/vgexport.8.gz
+%{_mandir}/man8/vgextend.8.gz
+%{_mandir}/man8/vgimport.8.gz
+%{_mandir}/man8/vgimportclone.8.gz
+%{_mandir}/man8/vgmerge.8.gz
+%{_mandir}/man8/vgmknodes.8.gz
+%{_mandir}/man8/vgreduce.8.gz
+%{_mandir}/man8/vgremove.8.gz
+%{_mandir}/man8/vgrename.8.gz
+%{_mandir}/man8/vgs.8.gz
+%{_mandir}/man8/vgscan.8.gz
+%{_mandir}/man8/vgsplit.8.gz
+%{_mandir}/man8/blkdeactivate.8.gz
+%{_mandir}/man8/lvm-dumpconfig.8.gz
+%if %{enable_udev}
+ %{_udevdir}/11-dm-lvm.rules
+ %if %{enable_lvmetad}
+  %{_mandir}/man8/lvmetad.8.gz
+  %{_udevdir}/69-dm-lvm-metad.rules
+ %endif
+%endif
+%dir %{_sysconfdir}/lvm
+%ghost %{_sysconfdir}/lvm/cache/.cache
+%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/lvm.conf
+%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/command_profile_template.profile
+%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/metadata_profile_template.profile
+%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/thin-generic.profile
+%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/thin-performance.profile
+%dir %{_sysconfdir}/lvm/backup
+%dir %{_sysconfdir}/lvm/cache
+%dir %{_sysconfdir}/lvm/archive
+%if %{enable_systemd}
+ %config(noreplace) %{_prefix}/lib/tmpfiles.d/%{name}.conf
+ %{_unitdir}/lvm2-monitor.service
+ %if %{enable_lvmetad}
+  %{_unitdir}/lvm2-lvmetad.socket
+  %{_unitdir}/lvm2-lvmetad.service
+  %{_unitdir}/lvm2-pvscan@.service
+  %{_unitdir}/blk-availability.service
+ %endif
+%endif
+
+##############################################################################
+# Library and Development subpackages
+##############################################################################
+%package devel
+Summary: Development libraries and headers
+Group: Development/Libraries
+License: LGPLv2
+Requires: %{name} = %{version}-%{release}
+Requires: device-mapper-devel >= %{device_mapper_version}-%{release}
+Requires: device-mapper-event-devel >= %{device_mapper_version}-%{release}
+
+%description devel
+This package contains files needed to develop applications that use
+the lvm2 libraries.
+
+%files devel
+%defattr(-,root,root,-)
+%{_libdir}/liblvm2app.so
+%{_libdir}/liblvm2cmd.so
+%{_includedir}/lvm2app.h
+%{_includedir}/lvm2cmd.h
+%{_libdir}/pkgconfig/lvm2app.pc
+%{_libdir}/libdevmapper-event-lvm2.so
+
+%package libs
+Summary: Shared libraries for lvm2
+License: LGPLv2
+Group: System Environment/Libraries
+Requires: device-mapper-event >= %{device_mapper_version}-%{release}
+
+%description libs
+This package contains shared lvm2 libraries for applications.
+
+%post libs -p /sbin/ldconfig
+
+%postun libs -p /sbin/ldconfig
+
+%files libs
+%defattr(-,root,root,-)
+%attr(755,root,root) %{_libdir}/liblvm2app.so.*
+%attr(755,root,root) %{_libdir}/liblvm2cmd.so.*
+%attr(755,root,root) %{_libdir}/libdevmapper-event-lvm2.so.*
+%dir %{_libdir}/device-mapper
+%{_libdir}/device-mapper/libdevmapper-event-lvm2mirror.so
+%{_libdir}/device-mapper/libdevmapper-event-lvm2snapshot.so
+%{_libdir}/device-mapper/libdevmapper-event-lvm2raid.so
+%{_libdir}/device-mapper/libdevmapper-event-lvm2thin.so
+%{_libdir}/libdevmapper-event-lvm2thin.so
+%{_libdir}/libdevmapper-event-lvm2mirror.so
+%{_libdir}/libdevmapper-event-lvm2snapshot.so
+%{_libdir}/libdevmapper-event-lvm2raid.so
+
+##############################################################################
+# Device-mapper subpackages
+##############################################################################
+%package -n device-mapper
+Summary: Device mapper utility
+Version: %{device_mapper_version}
+Release: %{release}
+License: GPLv2
+Group: System Environment/Base
+URL: http://sources.redhat.com/dm
+Requires: device-mapper-libs = %{device_mapper_version}-%{release}
+Requires: util-linux >= 2.15
+%if %{enable_udev}
+Requires: udev >= 181-1
+%endif
+
+%description -n device-mapper
+This package contains the supporting userspace utility, dmsetup,
+for the kernel device-mapper.
+
+%files -n device-mapper
+%defattr(-,root,root,-)
+%doc COPYING COPYING.LIB WHATS_NEW_DM VERSION_DM README INSTALL
+%attr(755,root,root) %{_sbindir}/dmsetup
+%{_mandir}/man8/dmsetup.8.gz
+%if %{enable_udev}
+%doc udev/12-dm-permissions.rules
+%dir %{_udevbasedir}
+%dir %{_udevdir}
+%{_udevdir}/10-dm.rules
+%{_udevdir}/13-dm-disk.rules
+%{_udevdir}/95-dm-notify.rules
+%endif
+
+%package -n device-mapper-devel
+Summary: Development libraries and headers for device-mapper
+Version: %{device_mapper_version}
+Release: %{release}
+License: LGPLv2
+Group: Development/Libraries
+Requires: device-mapper = %{device_mapper_version}-%{release}
+
+%description -n device-mapper-devel
+This package contains files needed to develop applications that use
+the device-mapper libraries.
+
+%files -n device-mapper-devel
+%defattr(-,root,root,-)
+%{_libdir}/libdevmapper.so
+%{_includedir}/libdevmapper.h
+%{_libdir}/pkgconfig/devmapper.pc
+
+%package -n device-mapper-libs
+Summary: Device-mapper shared library
+Version: %{device_mapper_version}
+Release: %{release}
+License: LGPLv2
+Group: System Environment/Libraries
+Requires: device-mapper = %{device_mapper_version}-%{release}
+
+%description -n device-mapper-libs
+This package contains the device-mapper shared library, libdevmapper.
+
+%post -n device-mapper-libs -p /sbin/ldconfig
+
+%postun -n device-mapper-libs -p /sbin/ldconfig
+
+%files -n device-mapper-libs
+%attr(755,root,root) %{_libdir}/libdevmapper.so.*
+
+%package -n device-mapper-event
+Summary: Device-mapper event daemon
+Group: System Environment/Base
+Version: %{device_mapper_version}
+Release: %{release}
+Requires: device-mapper = %{device_mapper_version}-%{release}
+Requires: device-mapper-event-libs = %{device_mapper_version}-%{release}
+%if %{enable_systemd}
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
+%endif
+
+%description -n device-mapper-event
+This package contains the dmeventd daemon for monitoring the state
+of device-mapper devices.
+
+%post -n device-mapper-event
+%if %{enable_systemd}
+/bin/systemctl daemon-reload > /dev/null 2>&1 || :
+/bin/systemctl enable dm-event.socket > /dev/null 2>&1 || :
+%endif
+
+%preun -n device-mapper-event
+%if %{enable_systemd}
+if [ "$1" = 0 ]; then
+	/bin/systemctl --no-reload disable dm-event.service dm-event.socket > /dev/null 2>&1 || :
+	/bin/systemctl stop dm-event.service dm-event.socket> /dev/null 2>&1 || :
+fi
+%endif
+
+%postun -n device-mapper-event
+%if %{enable_systemd}
+/bin/systemctl daemon-reload > /dev/null 2>&1 || :
+if [ $1 -ge 1 ]; then
+	/bin/systemctl reload dm-event.service > /dev/null 2>&1 || :
+fi
+%endif
+
+%files -n device-mapper-event
+%defattr(-,root,root,-)
+%{_sbindir}/dmeventd
+%{_mandir}/man8/dmeventd.8.gz
+%if %{enable_systemd}
+%{_unitdir}/dm-event.socket
+%{_unitdir}/dm-event.service
+%endif
+
+%package -n device-mapper-event-libs
+Summary: Device-mapper event daemon shared library
+Version: %{device_mapper_version}
+Release: %{release}
+License: LGPLv2
+Group: System Environment/Libraries
+
+%description -n device-mapper-event-libs
+This package contains the device-mapper event daemon shared library,
+libdevmapper-event.
+
+%post -n device-mapper-event-libs -p /sbin/ldconfig
+
+%postun -n device-mapper-event-libs -p /sbin/ldconfig
+
+%files -n device-mapper-event-libs
+%attr(755,root,root) %{_libdir}/libdevmapper-event.so.*
+
+%package -n device-mapper-event-devel
+Summary: Development libraries and headers for the device-mapper event daemon
+Version: %{device_mapper_version}
+Release: %{release}
+License: LGPLv2
+Group: Development/Libraries
+Requires: device-mapper-event = %{device_mapper_version}-%{release}
+
+%description -n device-mapper-event-devel
+This package contains files needed to develop applications that use
+the device-mapper event library.
+
+%files -n device-mapper-event-devel
+%defattr(-,root,root,-)
+%{_libdir}/libdevmapper-event.so
+%{_includedir}/libdevmapper-event.h
+%{_libdir}/pkgconfig/devmapper-event.pc
+
+
