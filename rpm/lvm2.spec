@@ -26,13 +26,15 @@
 # NOTE: 2. Systemd services have not been tested. In Mer we are not restarting
 #          systems on install phase so we should reconsider all those when this
 #          gets enabled.
+# NOTE: 3. We use LVM2's version also for device mapper due to how Mer releasing
+#          works (git tag is the version string for all packages in git repo).
+#          So make sure when there is device-mapper feature dependency that you
+#          "Require" to the tagged git version numbers, not to VERSION_DM
 
 %global enable_profiling 0
 %global enable_udev 0
 %global enable_systemd 0
 %global enable_lvmetad 0
-
-%define device_mapper_version 1.02.93
 
 Summary: Userland logical volume management tools
 Name: lvm2
@@ -294,8 +296,8 @@ Summary: Development libraries and headers
 Group: Development/Libraries
 License: LGPLv2
 Requires: %{name} = %{version}-%{release}
-Requires: device-mapper-devel >= %{device_mapper_version}-%{release}
-Requires: device-mapper-event-devel >= %{device_mapper_version}-%{release}
+Requires: device-mapper-devel >= %{version}-%{release}
+Requires: device-mapper-event-devel >= %{version}-%{release}
 
 %description devel
 This package contains files needed to develop applications that use
@@ -314,7 +316,7 @@ the lvm2 libraries.
 Summary: Shared libraries for lvm2
 License: LGPLv2
 Group: System Environment/Libraries
-Requires: device-mapper-event >= %{device_mapper_version}-%{release}
+Requires: device-mapper-event >= %{version}-%{release}
 
 %description libs
 This package contains shared lvm2 libraries for applications.
@@ -343,12 +345,11 @@ This package contains shared lvm2 libraries for applications.
 ##############################################################################
 %package -n device-mapper
 Summary: Device mapper utility
-Version: %{device_mapper_version}
 Release: %{release}
 License: GPLv2
 Group: System Environment/Base
 URL: http://sources.redhat.com/dm
-Requires: device-mapper-libs = %{device_mapper_version}-%{release}
+Requires: device-mapper-libs = %{version}-%{release}
 Requires: util-linux >= 2.15
 %if %{enable_udev}
 Requires: udev >= 181-1
@@ -374,11 +375,10 @@ for the kernel device-mapper.
 
 %package -n device-mapper-devel
 Summary: Development libraries and headers for device-mapper
-Version: %{device_mapper_version}
 Release: %{release}
 License: LGPLv2
 Group: Development/Libraries
-Requires: device-mapper = %{device_mapper_version}-%{release}
+Requires: device-mapper = %{version}-%{release}
 
 %description -n device-mapper-devel
 This package contains files needed to develop applications that use
@@ -392,11 +392,10 @@ the device-mapper libraries.
 
 %package -n device-mapper-libs
 Summary: Device-mapper shared library
-Version: %{device_mapper_version}
 Release: %{release}
 License: LGPLv2
 Group: System Environment/Libraries
-Requires: device-mapper = %{device_mapper_version}-%{release}
+Requires: device-mapper = %{version}-%{release}
 
 %description -n device-mapper-libs
 This package contains the device-mapper shared library, libdevmapper.
@@ -411,10 +410,9 @@ This package contains the device-mapper shared library, libdevmapper.
 %package -n device-mapper-event
 Summary: Device-mapper event daemon
 Group: System Environment/Base
-Version: %{device_mapper_version}
 Release: %{release}
-Requires: device-mapper = %{device_mapper_version}-%{release}
-Requires: device-mapper-event-libs = %{device_mapper_version}-%{release}
+Requires: device-mapper = %{version}-%{release}
+Requires: device-mapper-event-libs = %{version}-%{release}
 %if %{enable_systemd}
 Requires(post): systemd
 Requires(preun): systemd
@@ -458,7 +456,6 @@ fi
 
 %package -n device-mapper-event-libs
 Summary: Device-mapper event daemon shared library
-Version: %{device_mapper_version}
 Release: %{release}
 License: LGPLv2
 Group: System Environment/Libraries
@@ -476,11 +473,10 @@ libdevmapper-event.
 
 %package -n device-mapper-event-devel
 Summary: Development libraries and headers for the device-mapper event daemon
-Version: %{device_mapper_version}
 Release: %{release}
 License: LGPLv2
 Group: Development/Libraries
-Requires: device-mapper-event = %{device_mapper_version}-%{release}
+Requires: device-mapper-event = %{version}-%{release}
 
 %description -n device-mapper-event-devel
 This package contains files needed to develop applications that use
