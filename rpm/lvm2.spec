@@ -41,7 +41,7 @@ Name: lvm2
 Version: 2.02.115
 Release: 1
 License: GPLv2
-Group: System Environment/Base
+Group: System/Base
 URL: http://sources.redhat.com/lvm2
 Source0: %{name}-%{version}.tar.bz2
 
@@ -315,7 +315,7 @@ the lvm2 libraries.
 %package libs
 Summary: Shared libraries for lvm2
 License: LGPLv2
-Group: System Environment/Libraries
+Group: System/Libraries
 Requires: device-mapper-event >= %{version}-%{release}
 
 %description libs
@@ -347,7 +347,7 @@ This package contains shared lvm2 libraries for applications.
 Summary: Device mapper utility
 Release: %{release}
 License: GPLv2
-Group: System Environment/Base
+Group: System/Base
 URL: http://sources.redhat.com/dm
 Requires: device-mapper-libs = %{version}-%{release}
 Requires: util-linux >= 2.15
@@ -394,7 +394,7 @@ the device-mapper libraries.
 Summary: Device-mapper shared library
 Release: %{release}
 License: LGPLv2
-Group: System Environment/Libraries
+Group: System/Libraries
 Requires: device-mapper = %{version}-%{release}
 
 %description -n device-mapper-libs
@@ -409,7 +409,7 @@ This package contains the device-mapper shared library, libdevmapper.
 
 %package -n device-mapper-event
 Summary: Device-mapper event daemon
-Group: System Environment/Base
+Group: System/Base
 Release: %{release}
 Requires: device-mapper = %{version}-%{release}
 Requires: device-mapper-event-libs = %{version}-%{release}
@@ -458,7 +458,7 @@ fi
 Summary: Device-mapper event daemon shared library
 Release: %{release}
 License: LGPLv2
-Group: System Environment/Libraries
+Group: System/Libraries
 
 %description -n device-mapper-event-libs
 This package contains the device-mapper event daemon shared library,
