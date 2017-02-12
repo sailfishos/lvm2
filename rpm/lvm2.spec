@@ -69,7 +69,12 @@ or more physical volumes and creating one or more logical volumes
 %prep
 %setup -n %{name}-%{version}/%{name}
 
-%enableif %{enable_udev} udev_sync
+# UDEV_SYNC doesn't work in initramfs because we don't have udev there yet.
+# Should be enabled after fixing UDEV in initramfs.
+#% enableif %{enable_udev} udev_sync
+# Disabling udev_sync by default disables UDEV rules installing too.
+# But we need it.
+%enableif %{enable_udev} udev-rules
 %enableif %{enable_profiling} profiling
 %enableif %{enable_lvmetad} lvmetad
 
