@@ -32,7 +32,7 @@
 #          "Require" to the tagged git version numbers, not to VERSION_DM
 
 %global enable_profiling 0
-%global enable_udev 0
+%global enable_udev 1
 %global enable_systemd 0
 %global enable_lvmetad 0
 
@@ -48,7 +48,9 @@ Source0: %{name}-%{version}.tar.bz2
 BuildRequires: ncurses-devel
 BuildRequires: readline-devel
 BuildRequires: kmod
-%if %{enable_systemd}
+# libudev lives now in systemd so require systemd-devel when udev support
+# is enabled too.
+%if %{enable_systemd}%{enable_udev}
 BuildRequires: systemd-devel
 %endif
 Requires: %{name}-libs = %{version}-%{release}
@@ -487,5 +489,3 @@ the device-mapper event library.
 %{_libdir}/libdevmapper-event.so
 %{_includedir}/libdevmapper-event.h
 %{_libdir}/pkgconfig/devmapper-event.pc
-
-
