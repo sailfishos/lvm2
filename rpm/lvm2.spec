@@ -15,7 +15,9 @@
 %global _default_dm_run_dir /run
 %global _default_run_dir /run/lvm
 %global _default_locking_dir /run/lock/lvm
-%global _udevbasedir %{_prefix}/lib/udev
+# Install UDEV rules to /lib/udev/rules.d instead of /usr/... because of our
+# systemd installation looking for the rules there.
+%global _udevbasedir /lib/udev
 %global _udevdir %{_udevbasedir}/rules.d
 
 %define enableif() \
