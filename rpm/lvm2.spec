@@ -40,11 +40,11 @@
 
 Summary: Userland logical volume management tools
 Name: lvm2
-Version: 2.02.115
+Version: 2.02.177
 Release: 1
 License: GPLv2
 Group: System/Base
-URL: http://sources.redhat.com/lvm2
+URL: http://www.sourceware.org/lvm2
 Source0: %{name}-%{version}.tar.bz2
 
 BuildRequires: ncurses-devel
@@ -173,7 +173,7 @@ fi
 %{_sbindir}/lvdisplay
 %{_sbindir}/lvextend
 %{_sbindir}/lvm
-%{_sbindir}/lvmchange
+%{_sbindir}/lvmconfig
 %{_sbindir}/lvmdiskscan
 %{_sbindir}/lvmdump
 %{_sbindir}/lvmsadc
@@ -218,6 +218,9 @@ fi
  %{_sbindir}/lvmetad
 %endif
 %{_mandir}/man7/lvmcache.7.gz
+%{_mandir}/man7/lvmraid.7.gz
+%{_mandir}/man7/lvmreport.7.gz
+%{_mandir}/man7/lvmsystemid.7.gz
 %{_mandir}/man7/lvmthin.7.gz
 %{_mandir}/man5/lvm.conf.5.gz
 %{_mandir}/man8/fsadm.8.gz
@@ -227,8 +230,12 @@ fi
 %{_mandir}/man8/lvdisplay.8.gz
 %{_mandir}/man8/lvextend.8.gz
 %{_mandir}/man8/lvm.8.gz
-%{_mandir}/man8/lvmchange.8.gz
 %{_mandir}/man8/lvmconf.8.gz
+%{_mandir}/man8/lvm-config.8.gz
+%{_mandir}/man8/lvm-fullreport.8.gz
+%{_mandir}/man8/lvm-lvpoll.8.gz
+%{_mandir}/man8/lvmconf.8.gz
+%{_mandir}/man8/lvmconfig.8.gz
 %{_mandir}/man8/lvmdiskscan.8.gz
 %{_mandir}/man8/lvmdump.8.gz
 %{_mandir}/man8/lvmsadc.8.gz
@@ -279,6 +286,10 @@ fi
 %dir %{_sysconfdir}/lvm
 %ghost %{_sysconfdir}/lvm/cache/.cache
 %config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/lvm.conf
+%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/lvmlocal.conf
+%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/cache-mq.profile
+%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/cache-smq.profile
+%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/lvmdbusd.profile
 %config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/command_profile_template.profile
 %config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/metadata_profile_template.profile
 %config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/thin-generic.profile
@@ -372,7 +383,9 @@ for the kernel device-mapper.
 %defattr(-,root,root,-)
 %doc COPYING COPYING.LIB WHATS_NEW_DM VERSION_DM README INSTALL
 %attr(755,root,root) %{_sbindir}/dmsetup
+%attr(755,root,root) %{_sbindir}/dmstats
 %{_mandir}/man8/dmsetup.8.gz
+%{_mandir}/man8/dmstats.8.gz
 %if %{enable_udev}
 %doc udev/12-dm-permissions.rules
 %dir %{_udevbasedir}
