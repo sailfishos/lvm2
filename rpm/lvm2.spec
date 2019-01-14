@@ -68,6 +68,16 @@ or more physical volumes and creating one or more logical volumes
 
 # PatchN: nnn.patch goes here
 
+
+%package doc
+Summary:   Documentation for %{name}
+Group:     Documentation
+Requires:  %{name} = %{version}-%{release}
+
+%description doc
+Man pages for %{name} and device-mapper.
+
+
 %prep
 %setup -n %{name}-%{version}/%{name}
 
@@ -121,6 +131,11 @@ make install_systemd_units DESTDIR=$RPM_BUILD_ROOT
 make install_tmpfiles_configuration DESTDIR=$RPM_BUILD_ROOT
 %endif
 
+mkdir -p $RPM_BUILD_ROOT%{_docdir}/%{name}-%{version}/
+install -m0644 -t $RPM_BUILD_ROOT%{_docdir}/%{name}-%{version}/ \
+    INSTALL README VERSION* WHATS_NEW* doc/lvm_fault_handling.txt \
+    udev/12-dm-permissions.rules
+
 %check
 %{?check_commands}
 
@@ -164,8 +179,7 @@ fi
 
 %files
 %defattr(-,root,root,-)
-%doc COPYING COPYING.LIB INSTALL README VERSION WHATS_NEW
-%doc doc/lvm_fault_handling.txt
+%license COPYING COPYING.LIB
 %{_sbindir}/fsadm
 %{_sbindir}/lvchange
 %{_sbindir}/lvconvert
@@ -217,69 +231,9 @@ fi
 %if %{enable_lvmetad}
  %{_sbindir}/lvmetad
 %endif
-%{_mandir}/man7/lvmcache.7.gz
-%{_mandir}/man7/lvmraid.7.gz
-%{_mandir}/man7/lvmreport.7.gz
-%{_mandir}/man7/lvmsystemid.7.gz
-%{_mandir}/man7/lvmthin.7.gz
-%{_mandir}/man5/lvm.conf.5.gz
-%{_mandir}/man8/fsadm.8.gz
-%{_mandir}/man8/lvchange.8.gz
-%{_mandir}/man8/lvconvert.8.gz
-%{_mandir}/man8/lvcreate.8.gz
-%{_mandir}/man8/lvdisplay.8.gz
-%{_mandir}/man8/lvextend.8.gz
-%{_mandir}/man8/lvm.8.gz
-%{_mandir}/man8/lvmconf.8.gz
-%{_mandir}/man8/lvm-config.8.gz
-%{_mandir}/man8/lvm-fullreport.8.gz
-%{_mandir}/man8/lvm-lvpoll.8.gz
-%{_mandir}/man8/lvmconf.8.gz
-%{_mandir}/man8/lvmconfig.8.gz
-%{_mandir}/man8/lvmdiskscan.8.gz
-%{_mandir}/man8/lvmdump.8.gz
-%{_mandir}/man8/lvmsadc.8.gz
-%{_mandir}/man8/lvmsar.8.gz
-%{_mandir}/man8/lvreduce.8.gz
-%{_mandir}/man8/lvremove.8.gz
-%{_mandir}/man8/lvrename.8.gz
-%{_mandir}/man8/lvresize.8.gz
-%{_mandir}/man8/lvs.8.gz
-%{_mandir}/man8/lvscan.8.gz
-%{_mandir}/man8/pvchange.8.gz
-%{_mandir}/man8/pvck.8.gz
-%{_mandir}/man8/pvcreate.8.gz
-%{_mandir}/man8/pvdisplay.8.gz
-%{_mandir}/man8/pvmove.8.gz
-%{_mandir}/man8/pvremove.8.gz
-%{_mandir}/man8/pvresize.8.gz
-%{_mandir}/man8/pvs.8.gz
-%{_mandir}/man8/pvscan.8.gz
-%{_mandir}/man8/vgcfgbackup.8.gz
-%{_mandir}/man8/vgcfgrestore.8.gz
-%{_mandir}/man8/vgchange.8.gz
-%{_mandir}/man8/vgck.8.gz
-%{_mandir}/man8/vgconvert.8.gz
-%{_mandir}/man8/vgcreate.8.gz
-%{_mandir}/man8/vgdisplay.8.gz
-%{_mandir}/man8/vgexport.8.gz
-%{_mandir}/man8/vgextend.8.gz
-%{_mandir}/man8/vgimport.8.gz
-%{_mandir}/man8/vgimportclone.8.gz
-%{_mandir}/man8/vgmerge.8.gz
-%{_mandir}/man8/vgmknodes.8.gz
-%{_mandir}/man8/vgreduce.8.gz
-%{_mandir}/man8/vgremove.8.gz
-%{_mandir}/man8/vgrename.8.gz
-%{_mandir}/man8/vgs.8.gz
-%{_mandir}/man8/vgscan.8.gz
-%{_mandir}/man8/vgsplit.8.gz
-%{_mandir}/man8/blkdeactivate.8.gz
-%{_mandir}/man8/lvm-dumpconfig.8.gz
 %if %{enable_udev}
  %{_udevdir}/11-dm-lvm.rules
  %if %{enable_lvmetad}
-  %{_mandir}/man8/lvmetad.8.gz
   %{_udevdir}/69-dm-lvm-metad.rules
  %endif
 %endif
@@ -381,13 +335,10 @@ for the kernel device-mapper.
 
 %files -n device-mapper
 %defattr(-,root,root,-)
-%doc COPYING COPYING.LIB WHATS_NEW_DM VERSION_DM README INSTALL
+%license COPYING COPYING.LIB
 %attr(755,root,root) %{_sbindir}/dmsetup
 %attr(755,root,root) %{_sbindir}/dmstats
-%{_mandir}/man8/dmsetup.8.gz
-%{_mandir}/man8/dmstats.8.gz
 %if %{enable_udev}
-%doc udev/12-dm-permissions.rules
 %dir %{_udevbasedir}
 %dir %{_udevdir}
 %{_udevdir}/10-dm.rules
@@ -470,7 +421,6 @@ fi
 %files -n device-mapper-event
 %defattr(-,root,root,-)
 %{_sbindir}/dmeventd
-%{_mandir}/man8/dmeventd.8.gz
 %if %{enable_systemd}
 %{_unitdir}/dm-event.socket
 %{_unitdir}/dm-event.service
@@ -509,3 +459,74 @@ the device-mapper event library.
 %{_libdir}/libdevmapper-event.so
 %{_includedir}/libdevmapper-event.h
 %{_libdir}/pkgconfig/devmapper-event.pc
+
+%files doc
+%defattr(-,root,root,-)
+%{_mandir}/man7/lvmcache.7.gz
+%{_mandir}/man7/lvmraid.7.gz
+%{_mandir}/man7/lvmreport.7.gz
+%{_mandir}/man7/lvmsystemid.7.gz
+%{_mandir}/man7/lvmthin.7.gz
+%{_mandir}/man5/lvm.conf.5.gz
+%{_mandir}/man8/fsadm.8.gz
+%{_mandir}/man8/lvchange.8.gz
+%{_mandir}/man8/lvconvert.8.gz
+%{_mandir}/man8/lvcreate.8.gz
+%{_mandir}/man8/lvdisplay.8.gz
+%{_mandir}/man8/lvextend.8.gz
+%{_mandir}/man8/lvm.8.gz
+%{_mandir}/man8/lvmconf.8.gz
+%{_mandir}/man8/lvm-config.8.gz
+%{_mandir}/man8/lvm-fullreport.8.gz
+%{_mandir}/man8/lvm-lvpoll.8.gz
+%{_mandir}/man8/lvmconf.8.gz
+%{_mandir}/man8/lvmconfig.8.gz
+%{_mandir}/man8/lvmdiskscan.8.gz
+%{_mandir}/man8/lvmdump.8.gz
+%{_mandir}/man8/lvmsadc.8.gz
+%{_mandir}/man8/lvmsar.8.gz
+%{_mandir}/man8/lvreduce.8.gz
+%{_mandir}/man8/lvremove.8.gz
+%{_mandir}/man8/lvrename.8.gz
+%{_mandir}/man8/lvresize.8.gz
+%{_mandir}/man8/lvs.8.gz
+%{_mandir}/man8/lvscan.8.gz
+%{_mandir}/man8/pvchange.8.gz
+%{_mandir}/man8/pvck.8.gz
+%{_mandir}/man8/pvcreate.8.gz
+%{_mandir}/man8/pvdisplay.8.gz
+%{_mandir}/man8/pvmove.8.gz
+%{_mandir}/man8/pvremove.8.gz
+%{_mandir}/man8/pvresize.8.gz
+%{_mandir}/man8/pvs.8.gz
+%{_mandir}/man8/pvscan.8.gz
+%{_mandir}/man8/vgcfgbackup.8.gz
+%{_mandir}/man8/vgcfgrestore.8.gz
+%{_mandir}/man8/vgchange.8.gz
+%{_mandir}/man8/vgck.8.gz
+%{_mandir}/man8/vgconvert.8.gz
+%{_mandir}/man8/vgcreate.8.gz
+%{_mandir}/man8/vgdisplay.8.gz
+%{_mandir}/man8/vgexport.8.gz
+%{_mandir}/man8/vgextend.8.gz
+%{_mandir}/man8/vgimport.8.gz
+%{_mandir}/man8/vgimportclone.8.gz
+%{_mandir}/man8/vgmerge.8.gz
+%{_mandir}/man8/vgmknodes.8.gz
+%{_mandir}/man8/vgreduce.8.gz
+%{_mandir}/man8/vgremove.8.gz
+%{_mandir}/man8/vgrename.8.gz
+%{_mandir}/man8/vgs.8.gz
+%{_mandir}/man8/vgscan.8.gz
+%{_mandir}/man8/vgsplit.8.gz
+%{_mandir}/man8/blkdeactivate.8.gz
+%{_mandir}/man8/lvm-dumpconfig.8.gz
+%{_mandir}/man8/dmeventd.8.gz
+%{_mandir}/man8/dmsetup.8.gz
+%{_mandir}/man8/dmstats.8.gz
+%if %{enable_udev}
+ %if %{enable_lvmetad}
+  %{_mandir}/man8/lvmetad.8.gz
+ %endif
+%endif
+%doc %{_docdir}/%{name}-%{version}
