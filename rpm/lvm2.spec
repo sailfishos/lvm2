@@ -48,7 +48,6 @@ URL: http://www.sourceware.org/lvm2
 Source0: %{name}-%{version}.tar.bz2
 
 BuildRequires: ncurses-devel
-BuildRequires: readline-devel
 BuildRequires: kmod
 # libudev lives now in systemd so require systemd-devel when udev support
 # is enabled too.
@@ -115,6 +114,7 @@ Man pages for %{name} and device-mapper.
   --enable-applib \
   --enable-cmdlib \
   --enable-dmeventd \
+  --disable-readline \
 %if %{enable_udev}
   --with-udevdir=%{_udevdir} \
 %endif
