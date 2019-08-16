@@ -17,7 +17,7 @@
 %global _default_locking_dir /run/lock/lvm
 # Install UDEV rules to /lib/udev/rules.d instead of /usr/... because of our
 # systemd installation looking for the rules there.
-%global _udevbasedir /lib/udev
+%global _udevbasedir /usr/lib/udev
 %global _udevdir %{_udevbasedir}/rules.d
 
 %define enableif() \
@@ -55,7 +55,7 @@ BuildRequires: kmod
 BuildRequires: systemd-devel
 %endif
 Requires: %{name}-libs = %{version}-%{release}
-
+Requires: filesystem >= 3.2
 
 %description
 LVM2 includes all of the support for handling read/write operations on
