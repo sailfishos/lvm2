@@ -239,20 +239,20 @@ fi
 %endif
 %dir %{_sysconfdir}/lvm
 %ghost %{_sysconfdir}/lvm/cache/.cache
-%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/lvm.conf
-%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/lvmlocal.conf
-%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/cache-mq.profile
-%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/cache-smq.profile
-%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/lvmdbusd.profile
-%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/command_profile_template.profile
-%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/metadata_profile_template.profile
-%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/thin-generic.profile
-%config(noreplace) %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/thin-performance.profile
+%config %verify(not md5 mtime size) %{_sysconfdir}/lvm/lvm.conf
+%config %verify(not md5 mtime size) %{_sysconfdir}/lvm/lvmlocal.conf
+%config %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/cache-mq.profile
+%config %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/cache-smq.profile
+%config %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/lvmdbusd.profile
+%config %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/command_profile_template.profile
+%config %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/metadata_profile_template.profile
+%config %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/thin-generic.profile
+%config %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/thin-performance.profile
 %dir %{_sysconfdir}/lvm/backup
 %dir %{_sysconfdir}/lvm/cache
 %dir %{_sysconfdir}/lvm/archive
 %if %{enable_systemd}
- %config(noreplace) %{_prefix}/lib/tmpfiles.d/%{name}.conf
+ %config %{_prefix}/lib/tmpfiles.d/%{name}.conf
  %{_unitdir}/lvm2-monitor.service
  %if %{enable_lvmetad}
   %{_unitdir}/lvm2-lvmetad.socket
