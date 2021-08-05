@@ -52,7 +52,7 @@ BuildRequires: kmod
 # libudev lives now in systemd so require systemd-devel when udev support
 # is enabled too.
 %if %{enable_systemd}%{enable_udev}
-BuildRequires: systemd-devel
+BuildRequires: pkgconfig(systemd)
 %endif
 Requires: %{name}-libs = %{version}-%{release}
 
