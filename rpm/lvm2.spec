@@ -43,7 +43,7 @@ Name: lvm2
 Version: 2.02.177
 Release: 1
 License: GPLv2
-URL: http://www.sourceware.org/lvm2
+URL: https://github.com/sailfishos/lvm2
 Source0: %{name}-%{version}.tar.bz2
 
 BuildRequires: ncurses-devel
