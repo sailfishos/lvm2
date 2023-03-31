@@ -40,12 +40,13 @@
 
 Summary: Userland logical volume management tools
 Name: lvm2
-Version: 2.02.177
+Version: 2.03.22
 Release: 1
 License: GPLv2
 URL: https://github.com/sailfishos/lvm2
 Source0: %{name}-%{version}.tar.bz2
 
+BuildRequires: libaio-devel
 BuildRequires: ncurses-devel
 BuildRequires: kmod
 # libudev lives now in systemd so require systemd-devel when udev support
@@ -118,7 +119,7 @@ Man pages for %{name} and device-mapper.
 %endif
   %{configure_flags}
 
-make %{?_smp_mflags}
+%make_build
 %{?extra_build_commands}
 
 %install
@@ -131,7 +132,7 @@ make install_tmpfiles_configuration DESTDIR=$RPM_BUILD_ROOT
 
 mkdir -p $RPM_BUILD_ROOT%{_docdir}/%{name}-%{version}/
 install -m0644 -t $RPM_BUILD_ROOT%{_docdir}/%{name}-%{version}/ \
-    INSTALL README VERSION* WHATS_NEW* doc/lvm_fault_handling.txt \
+    README VERSION* WHATS_NEW* doc/lvm_fault_handling.txt \
     udev/12-dm-permissions.rules
 
 %check
@@ -149,8 +150,8 @@ install -m0644 -t $RPM_BUILD_ROOT%{_docdir}/%{name}-%{version}/ \
 %endif
 %endif
 
-%preun
 %if %{enable_systemd}
+%preun
 if [ "$1" = 0 ]; then
   /bin/systemctl --no-reload disable lvm2-monitor.service > /dev/null 2>&1 || :
   /bin/systemctl stop lvm2-monitor.service > /dev/null 2>&1 || :
@@ -161,8 +162,8 @@ if [ "$1" = 0 ]; then
 fi
 %endif
 
-%postun
 %if %{enable_systemd}
+%postun
 /bin/systemctl daemon-reload > /dev/null 2>&1 || :
 
 if [ $1 -ge 1 ]; then
@@ -184,8 +185,10 @@ fi
 %{_sbindir}/lvcreate
 %{_sbindir}/lvdisplay
 %{_sbindir}/lvextend
+%{_sbindir}/lvm_import_vdo
 %{_sbindir}/lvm
 %{_sbindir}/lvmconfig
+%{_sbindir}/lvmdevices
 %{_sbindir}/lvmdiskscan
 %{_sbindir}/lvmdump
 %{_sbindir}/lvmsadc
@@ -216,6 +219,7 @@ fi
 %{_sbindir}/vgextend
 %{_sbindir}/vgimport
 %{_sbindir}/vgimportclone
+%{_sbindir}/vgimportdevices
 %{_sbindir}/vgmerge
 %{_sbindir}/vgmknodes
 %{_sbindir}/vgreduce
@@ -224,8 +228,9 @@ fi
 %{_sbindir}/vgs
 %{_sbindir}/vgscan
 %{_sbindir}/vgsplit
-%{_sbindir}/lvmconf
 %{_sbindir}/blkdeactivate
+%{_sbindir}/blkdeactivate
+%{_libexecdir}/lvresize_fs_helper
 %if %{enable_lvmetad}
  %{_sbindir}/lvmetad
 %endif
@@ -234,6 +239,7 @@ fi
  %if %{enable_lvmetad}
   %{_udevdir}/69-dm-lvm-metad.rules
  %endif
+ %{_udevdir}/69-dm-lvm.rules
 %endif
 %dir %{_sysconfdir}/lvm
 %ghost %{_sysconfdir}/lvm/cache/.cache
@@ -246,6 +252,7 @@ fi
 %config %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/metadata_profile_template.profile
 %config %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/thin-generic.profile
 %config %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/thin-performance.profile
+%config %verify(not md5 mtime size) %{_sysconfdir}/lvm/profile/vdo-small.profile
 %dir %{_sysconfdir}/lvm/backup
 %dir %{_sysconfdir}/lvm/cache
 %dir %{_sysconfdir}/lvm/archive
@@ -276,11 +283,8 @@ the lvm2 libraries.
 
 %files devel
 %defattr(-,root,root,-)
-%{_libdir}/liblvm2app.so
 %{_libdir}/liblvm2cmd.so
-%{_includedir}/lvm2app.h
 %{_includedir}/lvm2cmd.h
-%{_libdir}/pkgconfig/lvm2app.pc
 %{_libdir}/libdevmapper-event-lvm2.so
 
 %package libs
@@ -297,7 +301,6 @@ This package contains shared lvm2 libraries for applications.
 
 %files libs
 %defattr(-,root,root,-)
-%attr(755,root,root) %{_libdir}/liblvm2app.so.*
 %attr(755,root,root) %{_libdir}/liblvm2cmd.so.*
 %attr(755,root,root) %{_libdir}/libdevmapper-event-lvm2.so.*
 %dir %{_libdir}/device-mapper
@@ -305,10 +308,12 @@ This package contains shared lvm2 libraries for applications.
 %{_libdir}/device-mapper/libdevmapper-event-lvm2snapshot.so
 %{_libdir}/device-mapper/libdevmapper-event-lvm2raid.so
 %{_libdir}/device-mapper/libdevmapper-event-lvm2thin.so
+%{_libdir}/device-mapper/libdevmapper-event-lvm2vdo.so
 %{_libdir}/libdevmapper-event-lvm2thin.so
 %{_libdir}/libdevmapper-event-lvm2mirror.so
 %{_libdir}/libdevmapper-event-lvm2snapshot.so
 %{_libdir}/libdevmapper-event-lvm2raid.so
+%{_libdir}/libdevmapper-event-lvm2vdo.so
 
 ##############################################################################
 # Device-mapper subpackages
@@ -388,22 +393,22 @@ Requires(postun): systemd
 This package contains the dmeventd daemon for monitoring the state
 of device-mapper devices.
 
-%post -n device-mapper-event
 %if %{enable_systemd}
+%post -n device-mapper-event
 /bin/systemctl daemon-reload > /dev/null 2>&1 || :
 /bin/systemctl enable dm-event.socket > /dev/null 2>&1 || :
 %endif
 
-%preun -n device-mapper-event
 %if %{enable_systemd}
+%preun -n device-mapper-event
 if [ "$1" = 0 ]; then
 	/bin/systemctl --no-reload disable dm-event.service dm-event.socket > /dev/null 2>&1 || :
 	/bin/systemctl stop dm-event.service dm-event.socket> /dev/null 2>&1 || :
 fi
 %endif
 
-%postun -n device-mapper-event
 %if %{enable_systemd}
+%postun -n device-mapper-event
 /bin/systemctl daemon-reload > /dev/null 2>&1 || :
 if [ $1 -ge 1 ]; then
 	/bin/systemctl reload dm-event.service > /dev/null 2>&1 || :
@@ -452,7 +457,9 @@ the device-mapper event library.
 
 %files doc
 %defattr(-,root,root,-)
+%{_mandir}/man7/lvmautoactivation.7.gz
 %{_mandir}/man7/lvmcache.7.gz
+%{_mandir}/man7/lvmvdo.7.gz
 %{_mandir}/man7/lvmraid.7.gz
 %{_mandir}/man7/lvmreport.7.gz
 %{_mandir}/man7/lvmsystemid.7.gz
@@ -464,13 +471,13 @@ the device-mapper event library.
 %{_mandir}/man8/lvcreate.8.gz
 %{_mandir}/man8/lvdisplay.8.gz
 %{_mandir}/man8/lvextend.8.gz
+%{_mandir}/man8/lvm_import_vdo.8.gz
 %{_mandir}/man8/lvm.8.gz
-%{_mandir}/man8/lvmconf.8.gz
 %{_mandir}/man8/lvm-config.8.gz
 %{_mandir}/man8/lvm-fullreport.8.gz
 %{_mandir}/man8/lvm-lvpoll.8.gz
-%{_mandir}/man8/lvmconf.8.gz
 %{_mandir}/man8/lvmconfig.8.gz
+%{_mandir}/man8/lvmdevices.8.gz
 %{_mandir}/man8/lvmdiskscan.8.gz
 %{_mandir}/man8/lvmdump.8.gz
 %{_mandir}/man8/lvmsadc.8.gz
@@ -501,6 +508,7 @@ the device-mapper event library.
 %{_mandir}/man8/vgextend.8.gz
 %{_mandir}/man8/vgimport.8.gz
 %{_mandir}/man8/vgimportclone.8.gz
+%{_mandir}/man8/vgimportdevices.8.gz
 %{_mandir}/man8/vgmerge.8.gz
 %{_mandir}/man8/vgmknodes.8.gz
 %{_mandir}/man8/vgreduce.8.gz
